@@ -16,14 +16,17 @@ jobs:
       services: ${{ steps.changes.outputs.services }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
       - id: changes
         run: |
           services="[]"
           for dir in auth-service product-service order-service notification-service; do
-            if git diff --quiet HEAD~1 HEAD -- "$dir/"; then
+            if git diff --quiet HEAD~1 HEAD -- "$dir/" 2>/dev/null; then
               echo "No changes in $dir"
             else
-              services=$(echo "$services" | jq --arg s "$dir" '. + [$s]')
+              services=$(echo "$services" | jq -c --arg s "$dir" '. + [$s]')
               echo "Changes detected in $dir"
             fi
           done
@@ -46,7 +49,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ${{ matrix.service }}
-        run: npm ci
+        run: npm install
 
       - name: Build
         working-directory: ${{ matrix.service }}
