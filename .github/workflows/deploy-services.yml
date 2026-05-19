@@ -1,0 +1,59 @@
+name: Deploy Services
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "auth-service/**"
+      - "product-service/**"
+      - "order-service/**"
+      - "notification-service/**"
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.changes.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: changes
+        run: |
+          services="[]"
+          for dir in auth-service product-service order-service notification-service; do
+            if git diff --quiet HEAD~1 HEAD -- "$dir/"; then
+              echo "No changes in $dir"
+            else
+              services=$(echo "$services" | jq --arg s "$dir" '. + [$s]')
+              echo "Changes detected in $dir"
+            fi
+          done
+          echo "services=$services" >> $GITHUB_OUTPUT
+
+  deploy:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.services != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.service }}
+        run: npm ci
+
+      - name: Build
+        working-directory: ${{ matrix.service }}
+        run: npm run build
+
+      - name: Deploy to Railway
+        run: |
+          npx railway up --service ${{ matrix.service }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
