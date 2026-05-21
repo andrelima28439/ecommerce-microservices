@@ -199,7 +199,7 @@ erDiagram
 
 ```bash
 # 1. Clone and enter the project
-git clone https://github.com/your-username/ecommerce-microservices.git
+git clone https://github.com/andrelima28439/ecommerce-microservices.git
 cd ecommerce-microservices
 
 # 2. Start everything (10 containers)
